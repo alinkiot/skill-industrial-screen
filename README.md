@@ -25,6 +25,7 @@ scripts/          校验脚本，以及图元库、位图图标库、图元画�
 assets/
   base-dashboard.html   基础页面骨架
   symbol-library/       154 个 FUXA 矢量工艺图元（currentColor，可随状态变色）
+  vendor/               本地依赖：Vue 3 / ECharts 5 / Three.js / OrbitControls（约 1.7 MB）
   iotview-icons/        1530 个 iotview 位图图标（约 118 MB，不可改色）
 out/              示例场景与输出目录
 ```

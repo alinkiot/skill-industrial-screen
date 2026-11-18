@@ -25,6 +25,7 @@ description: 创建工业监控大屏与 SCADA/HMI。核心是"控制 + 操作�
 生成的工业大屏 HTML 输出到本 skill 自己的 `out/` 目录（`skills/industrial-screen/out/<场景名>/`），与 `bigscreen-studio` 对齐；交付时把单文件 HTML 直接放那里，可双击离线打开。
 
 - 默认输出一个独立 HTML：引用随交付包提供的本地 Vue 3、ECharts 5 资源，加一个内联 IIFE，共三对 `script` 标签；需要三维设备时可追加本地 Three.js、控制器和模型脚本，总数不得超过六对。**不得将 CDN 作为现场运行前提。**
+- 本地库位于 `assets/vendor/`（`vue.global.prod.js`、`echarts.min.js`、`three.min.js`、`OrbitControls.js`）。输出到 `out/<场景>/index.html` 时用 `../../assets/vendor/<文件>` 引用；交付给客户时把用到的库一并复制到页面旁并改相对路径。
 - 使用 1920×1080 固定画布和等比缩放，保留拼接屏安全边距。
 - **颜色只能表达一种语义**：青蓝为主数据，绿色为正常，琥珀色为警告，红色为报警，灰色为离线或未知。同一元素不能同时使用主题色和状态色；红色不得用于普通按钮、标题和装饰边框；安全场景不得把整屏红色当主题色。
 - 主视觉优先使用内联 SVG；图表只承担趋势、频谱、分布或对比任务。
@@ -37,7 +38,7 @@ description: 创建工业监控大屏与 SCADA/HMI。核心是"控制 + 操作�
 - 使用 `safeInit(id)` 初始化图表；DOM 查询后检查空值（`if (!el) return`）。
 - `setInterval`、缩放回调和图表更新包含 `try/catch`。
 - 页面明确展示 `quality`、`timestamp` 和通信状态；缺失数据不能伪装为正常的 `0`。
-- 需要配置化或数据接入时，优先复用仓库的 `packages/runtime`、`packages/components` 和 `packages/data-adapters`，避免复制粘贴整页。
+- 需要配置化或数据接入时，如工作区另有 `packages/runtime`、`packages/components`、`packages/data-adapters`（来自 industrial-dashboard-studio 仓库），优先复用，避免复制粘贴整页；没有时直接按本 skill 的骨架生成。
 - 控制台零错误，文字无裁切，浅色文字不得叠在浅色面板上。
 - 支持 `prefers-reduced-motion`，关闭循环位移和呼吸。
 - 大屏默认只读。
@@ -102,7 +103,7 @@ description: 创建工业监控大屏与 SCADA/HMI。核心是"控制 + 操作�
 完成后按所选模式运行校验脚本（脚本可接受文件或目录，对目录递归检查所有 `.html`）：
 
 ```bash
-node skills/industrial-screen/scripts/validate-dashboard.js scenarios       # dashboard / local-panel
+node scripts/validate-dashboard.js out       # dashboard / local-panel
 node skills/industrial-screen/scripts/validate-hmi.js <html-file>            # hmi-classic
 node skills/industrial-screen/scripts/validate-scada.js <html-file>          # scada
 node skills/industrial-screen/scripts/validate-light-3d-hmi.js <html-file>   # light-3d
