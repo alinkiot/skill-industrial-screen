@@ -20,7 +20,7 @@
 
 ```text
 SKILL.md          Skill 入口（模式判断、共享输出契约、硬规则）
-references/       ISA-101、控制安全契约、Faceplate、报警生命周期、点表、P&ID 与图元库等 16 份文档
+references/       ISA-101、控制安全契约、Faceplate、报警生命周期、点表、P&ID 与图元库等 17 份文档
 scripts/          校验脚本，以及图元库、位图图标库、图元画廊的构建脚本
 assets/
   base-dashboard.html   基础页面骨架
@@ -56,9 +56,10 @@ node scripts/validate-light-3d-hmi.js out/<场景>/index.html # light-3d（仅�
 重新生成图元库资料：
 
 ```bash
-node scripts/build-symbol-library.js
-node scripts/build-raster-icons.js
-node scripts/gen-symbol-gallery.js
+node scripts/build-symbol-library.js   # 重建 FUXA 矢量图元 sprite + JSON
+node scripts/gen-symbol-doc.js         # 由 JSON 重生成 references/process-symbol-library.md
+node scripts/build-raster-icons.js     # 重建 iotview 位图索引
+node scripts/gen-symbol-gallery.js     # 重生成 out/symbol-gallery/ 图元画廊
 ```
 
 ### 模式标记与目录校验
