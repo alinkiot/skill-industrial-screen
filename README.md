@@ -71,16 +71,37 @@ node scripts/gen-symbol-gallery.js
 
 `validate-dashboard.js out` 会跳过带其他模式标记的页面和参考页 `symbol-gallery/`；`validate-scada.js out` 只校验标记 `scada` 的页面。显式传单个文件时始终按该脚本契约校验。这样一条目录命令即可覆盖全部产物，不会误报。
 
-## 测试产物（实测记录）
+## 示例与效果展示
 
-`out/` 中随仓库提供并经校验脚本实测通过的交付样例，可直接双击打开：
+下面两个示例由本 skill 实测生成，页面可直接双击打开，截图为 1920×1080 实拍。
 
-| 目录 | 模式 | 校验 |
-| --- | --- | --- |
-| `water-plant-overview/` | dashboard · 污水厂运行态势（工艺流程主视觉 + 水质趋势） | `validate-dashboard.js` 通过 |
-| `pump-station-scada/` | scada · 加压泵站操作终端（Faceplate + SBO 两步确认 + 审计日志 + 消音确认） | `validate-scada.js` 通过 |
+### 示例一 · 污水厂运行态势总览（dashboard）
 
-`out/` 另有 5 个既有 dashboard 样例（换热站、热泵站、设备健康、污水厂写实、管网）与 1 个参考图元画廊，全部通过各自校验。目录级命令：
+提示词（直接对 AI 说）：
+
+> 做一个城北污水处理厂的运行态势大屏，只读展示。要有进水水质（COD、氨氮、总磷、流量、pH）、日处理量/达标率/电耗/报警四个 KPI、一条"进水→生化→深度→出水"的工艺流程主视觉、出水水质 24h 趋势，以及报警事件和安全决策区。演示数据，标注数据质量与更新时间。
+
+AI 据此判断为 `dashboard` 模式，读取 design-system + scene-layouts + data-contract，生成 `out/water-plant-overview/index.html`。
+
+![污水厂运行态势总览](out/water-plant-overview/water-plant-overview-1920.png)
+
+效果展示：顶部品牌栏 + 四个 KPI；左侧进水水质与关键设备状态；中部inline SVG 工艺流程（格栅→沉砂池→生化池→二沉池→消毒出水，测点贴合节点）与 COD/氨氮双轴趋势；右侧按优先级排列的报警与安全决策栏；底部数据质量与更新时间状态栏。全程无控制台报错，`validate-dashboard.js` 通过。
+
+### 示例二 · 加压泵站操作终端（scada）
+
+提示词（直接对 AI 说）：
+
+> 做一个 1# 加压泵站的 Web SCADA 操作终端。要能对两台泵启停和调节频率，每台泵有 Faceplate 操作小面板（SP/OP、±0.1 点动、手自动、限幅 28~50Hz）；启停必须走 SBO 两步确认带 5 秒看门狗；顶部常驻最高级报警并可消音/确认；底部有操作审计日志。控制权显示中控/就地。演示数据，前端模拟不接真实 PLC。
+
+AI 据此判断为 `scada` 模式，读取 control-safety-contract + faceplate-specification + tag-point-table + alarm-lifecycle，生成 `out/pump-station-scada/index.html`。
+
+![加压泵站 SCADA 操作终端](out/pump-station-scada/pump-station-scada-1920.png)
+
+效果展示：顶栏控制权与数据质量；红色常驻报警条（含消音/确认）；左侧工段导航；中部两台泵组卡片（运行/停止状态、Hz、压力、电流、联锁、手自动）；右侧 Faceplate 面板（限幅、点动、手自动、SBO 启停、故障复位），点击启停会弹出 5 秒二次确认；底部审计日志表记录时间/工号/对象/指令/旧值→新值/结果。`validate-scada.js` 通过。
+
+### 其余样例
+
+`out/` 另有 5 个既有 dashboard 样例（换热站、热泵站、设备健康、污水厂写实、管网）与 1 个参考图元画廊，均通过各自校验。目录级命令：
 
 ```bash
 node scripts/validate-dashboard.js out   # 6 通过
