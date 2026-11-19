@@ -45,11 +45,13 @@ git clone git@github.com:alinkiot/skill-industrial-screen.git industrial-screen
 向 AI 描述需求即可，例如"做一个污水厂 SCADA 操作终端"。Skill 会按需求选择模式，读取对应参考文档，生成页面到 `out/<场景名>/index.html`。生成后运行对应校验脚本：
 
 ```bash
-node scripts/validate-dashboard.js out          # dashboard / local-panel
-node scripts/validate-hmi.js out                # hmi-classic
-node scripts/validate-scada.js out              # scada
-node scripts/validate-light-3d-hmi.js out       # light-3d
+node scripts/validate-dashboard.js out              # dashboard / local-panel（目录）
+node scripts/validate-scada.js out                  # scada（目录）
+node scripts/validate-hmi.js out/<场景>/index.html          # hmi-classic（仅单文件）
+node scripts/validate-light-3d-hmi.js out/<场景>/index.html # light-3d（仅单文件）
 ```
+
+`validate-hmi.js` 与 `validate-light-3d-hmi.js` 只接受单个 HTML 文件，传目录会报错，需指定到 `index.html`。
 
 重新生成图元库资料：
 
