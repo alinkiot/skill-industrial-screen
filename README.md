@@ -99,12 +99,26 @@ AI 据此判断为 `scada` 模式，读取 control-safety-contract + faceplate-s
 
 效果展示：顶栏控制权与数据质量；红色常驻报警条（含消音/确认）；左侧工段导航；中部两台泵组卡片（运行/停止状态、Hz、压力、电流、联锁、手自动）；右侧 Faceplate 面板（限幅、点动、手自动、SBO 启停、故障复位），点击启停会弹出 5 秒二次确认；底部审计日志表记录时间/工号/对象/指令/旧值→新值/结果。`validate-scada.js` 通过。
 
+### 示例三 · 换热站设备组态（dashboard · iotview 位图图元）
+
+提示词（直接对 AI 说）：
+
+> 用 iotview 位图图元做一个西区换热站的设备组态总览大屏。主视觉是工艺组态图：一次侧热源经板式换热器到二次侧，要有循环泵、补水泵、调节阀、蝶阀、分水器、补水罐、流量计、压力表、鼓风机这些写实设备，用管线连起来并带流向动画；左右放一次侧/二次侧参数和状态栏。状态用光环/角标表达，不要给位图改色。演示数据。
+
+AI 判断为 `dashboard` 模式，主视觉选用 `assets/iotview-icons/` 的 iotview 位图（泵/阀/罐/表/风机，RGBA 透明底、固定色），管线与流向用内联 SVG 叠加，生成 `out/iotview-heat-station/index.html`。
+
+![换热站设备组态（iotview 位图）](out/iotview-heat-station/iotview-heat-station-1920.png)
+
+效果展示：中部组态画布上，板式换热器、立式/卧式泵、手轮调节阀、蝶阀、分水器、补水罐、数显流量计、压力表、鼓风机等位图设备按工艺流程摆放，橙/蓝/绿三色管线（SVG）带流向虚线动画连接；每台设备外圈光环表达运行/停止/告警（鼓风机振动偏高用琥珀角标），避开位图不可改色的限制。左右为一次侧/二次侧参数与设备状态、报警栏。`validate-dashboard.js` 通过。
+
+> 选用要点：iotview 位图固定色、不可随状态变色，适合做写实设备示意；需要"运行绿/故障红/离线灰"动态着色时改用 FUXA 矢量图元库（见 `references/process-symbol-library.md`）。两者如何取舍见 `references/raster-icon-library.md`。
+
 ### 其余样例
 
 `out/` 另有 5 个既有 dashboard 样例（换热站、热泵站、设备健康、污水厂写实、管网）与 1 个参考图元画廊，均通过各自校验。目录级命令：
 
 ```bash
-node scripts/validate-dashboard.js out   # 6 通过
+node scripts/validate-dashboard.js out   # 7 通过
 node scripts/validate-scada.js out       # 1 通过
 ```
 

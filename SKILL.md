@@ -43,6 +43,7 @@ description: 创建工业监控大屏与 SCADA/HMI。核心是"控制 + 操作�
 - 支持 `prefers-reduced-motion`，关闭循环位移和呼吸。
 - 大屏默认只读。
 - **工艺图元优先复用图元库**：绘制泵、压缩机、换热器、阀门、罐、管件等工艺设备时，先查 `references/process-symbol-library.md`（154 个 FUXA 矢量图元，`currentColor` 可随状态变色，优先用于需动态着色的 P&ID）；需要写实设备示意/装饰且不随状态变色时，查 `references/raster-icon-library.md`（1530 个 iotview 位图，`<img>` 引用）。缺图元或需精细化时再自绘。
+  - iotview 位图同样可搭建**整幅设备组态主视觉**（不只是小图标）：用 `<img>` 摆放写实设备，管线/流向用内联 SVG 叠加，状态用外圈光环或角标表达（位图固定色、不可改色）。完整范例见 `out/iotview-heat-station/`（换热站组态，README 示例三）。
 
 ## 3. 各模式专属契约
 

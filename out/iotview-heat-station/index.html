@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="screen-mode" content="dashboard">
+<title>西区换热站 · 设备组态总览（iotview 图元）</title>
+<!-- 工艺设备主视觉使用 iotview 位图图元（assets/iotview-icons/，RGBA 透明底、不可改色）；
+     状态用外圈光环/角标表达，不试图给位图改色。演示数据。 -->
+<script src="../../assets/vendor/vue.global.prod.js"></script>
+<script src="../../assets/vendor/echarts.min.js"></script>
+<style>
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#03080c;color:#f2f7fa;font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif}
+body{display:flex;align-items:center;justify-content:center}.num{font-variant-numeric:tabular-nums}[v-cloak]{display:none}
+:root{--bg:#071019;--s2:#0f1d2a;--line:#20394a;--accent:#36c2ff;--ok:#35d07f;--warn:#ffb547;--alarm:#ff5d5d;--offline:#708594;--t2:#a8bac8;--t3:#708594}
+#screen{width:1920px;height:1080px;position:absolute;left:50%;top:50%;transform-origin:center center;display:grid;grid-template-rows:74px 1fr 40px;overflow:hidden;background:radial-gradient(circle at 50% 34%,rgba(54,194,255,.05),transparent 45%),var(--bg)}
+.topbar{display:grid;grid-template-columns:440px 1fr 440px;align-items:center;padding:0 22px;border-bottom:1px solid var(--line);background:#050d15}
+.brand strong{display:block;font-size:17px;letter-spacing:2px}.brand span{font-size:11px;color:var(--t3);letter-spacing:1.5px}
+.title{text-align:center}.title h1{margin:0;font-size:27px;letter-spacing:4px}.title p{margin:4px 0 0;color:var(--accent);font-size:11px;letter-spacing:4px}
+.clock{text-align:right}.clock strong{display:block;font-size:21px}.clock span{font-size:11px;color:var(--t3)}
+.main{min-height:0;display:grid;grid-template-columns:320px 1fr 320px;gap:14px;padding:14px 18px}
+.col{min-height:0;display:grid;grid-template-rows:1fr 1fr;gap:14px}.middle{grid-template-rows:96px 1fr}
+.panel{min-height:0;overflow:hidden;border:1px solid var(--line);border-radius:8px;background:linear-gradient(145deg,rgba(15,29,42,.95),rgba(8,18,28,.96))}
+.head{height:42px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.head b{font-size:16px}.head span{font-size:11px;color:var(--t3)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--s2)}.kpi label{display:block;color:var(--t2);font-size:12px}.kpi strong{display:block;margin-top:6px;font-size:27px}
+.body{padding:12px 14px}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13px}.row:last-child{border-bottom:none}.row span{color:var(--t2)}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.danger{color:var(--alarm)}.accent{color:var(--accent)}.off{color:var(--offline)}
+/* 组态画布 */
+.stage{position:relative;width:100%;height:calc(100% - 42px);overflow:hidden}
+.stage svg.wires{position:absolute;inset:0;width:100%;height:100%}
+.dev{position:absolute;text-align:center;transform:translate(-50%,-50%)}
+.dev .ring{position:relative;display:inline-block;padding:6px;border:2px solid var(--line);border-radius:14px;background:rgba(8,18,28,.55);transition:box-shadow .2s,border-color .2s}
+.dev.run .ring{border-color:var(--ok);box-shadow:0 0 18px rgba(53,208,127,.28)}
+.dev.stop .ring{border-color:var(--offline)}.dev.warns .ring{border-color:var(--warn);box-shadow:0 0 18px rgba(255,181,71,.3)}
+.dev img{display:block;object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5))}
+.dev .cap{margin-top:4px;font-size:12px;white-space:nowrap}.dev .val{font-size:12px;margin-top:1px}
+.tag{position:absolute;font-size:11px;color:var(--t2);background:rgba(5,13,21,.8);border:1px solid var(--line);border-radius:4px;padding:2px 6px;transform:translate(-50%,-50%)}
+.flowdot{animation:flow 2.4s linear infinite}@keyframes flow{to{stroke-dashoffset:-48}}
+.footer{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center;padding:0 20px;border-top:1px solid var(--line);background:#050d15;font-size:12px;color:var(--t2)}
+.footer div:nth-child(2){text-align:center;color:var(--t3)}.footer div:last-child{text-align:right}
+</style>
+</head>
+<body>
+<div id="app" v-cloak><div id="screen">
+  <header class="topbar">
+    <div class="brand"><strong>西区换热站</strong><span>HEAT EXCHANGE · 设备组态</span></div>
+    <div class="title"><h1>换热站工艺设备组态总览</h1><p>IOTVIEW SYMBOLS · 位图图元组态</p></div>
+    <div class="clock num"><strong>{{clock}}</strong><span>{{date}} · 数据质量 {{quality}}</span></div>
+  </header>
+  <main class="main">
+    <section class="col">
+      <article class="panel"><div class="head"><b>一次侧 / 热源</b><span>实时</span></div><div class="body">
+        <div class="row"><span>一次供水温度</span><b class="accent num">{{p1.supply}} ℃</b></div>
+        <div class="row"><span>一次回水温度</span><b class="num">{{p1.return}} ℃</b></div>
+        <div class="row"><span>一次侧压力</span><b class="num">{{p1.pressure}} MPa</b></div>
+        <div class="row"><span>供热量</span><b class="num">{{p1.heat}} MW</b></div>
+        <div class="row"><span>调节阀开度</span><b class="num">{{p1.valve}} %</b></div>
+      </div></article>
+      <article class="panel"><div class="head"><b>设备状态</b><span>在线 {{online}}/{{total}}</span></div><div class="body">
+        <div class="row" v-for="d in devStatus" :key="d.name"><span>{{d.name}}</span><b :class="d.cls">{{d.state}}</b></div>
+      </div></article>
+    </section>
+    <section class="col middle">
+      <div class="kpis">
+        <div class="kpi"><label>二次供水温度</label><strong class="num accent">{{kpi.s2t}}</strong><span>℃ · 设定 60</span></div>
+        <div class="kpi"><label>循环泵频率</label><strong class="num">{{kpi.pumpHz}}</strong><span>Hz</span></div>
+        <div class="kpi"><label>补水量</label><strong class="num">{{kpi.makeup}}</strong><span>m³/h</span></div>
+        <div class="kpi"><label>当前报警</label><strong class="num warn">{{alarms}}</strong><span>1 条未确认</span></div>
+      </div>
+      <article class="panel"><div class="head"><b>工艺组态图</b><span>iotview 位图图元 · 状态用光环/角标表达</span></div>
+        <div class="stage">
+          <svg class="wires" viewBox="0 0 1000 560" preserveAspectRatio="none">
+            <defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#ff9d5c"/></marker>
+              <marker id="ab" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#36c2ff"/></marker></defs>
+            <!-- 一次侧（橙色，热源→换热器→回水） -->
+            <path d="M70,110 H360 V210 H430" fill="none" stroke="#7a4a2a" stroke-width="7"/>
+            <path d="M70,110 H360 V210 H430" fill="none" stroke="#ff9d5c" stroke-width="2.5" class="flowdot" stroke-dasharray="10 14" marker-end="url(#ar)"/>
+            <path d="M560,210 H640 V330 H360 V110 H70" fill="none" stroke="#7a4a2a" stroke-width="7" opacity=".85"/>
+            <!-- 二次侧（蓝色，换热器→分水器→用户→回水→循环泵） -->
+            <path d="M560,380 H700 V300" fill="none" stroke="#1d4a63" stroke-width="7"/>
+            <path d="M560,380 H700 V300" fill="none" stroke="#36c2ff" stroke-width="2.5" class="flowdot" stroke-dasharray="10 14" marker-end="url(#ab)"/>
+            <path d="M760,300 V470 H300 V430" fill="none" stroke="#1d4a63" stroke-width="7"/>
+            <path d="M760,300 V470 H300 V430" fill="none" stroke="#36c2ff" stroke-width="2.5" class="flowdot" stroke-dasharray="10 14"/>
+            <!-- 补水（绿色细线） -->
+            <path d="M120,500 H300" fill="none" stroke="#1d5a3a" stroke-width="5"/>
+            <path d="M120,500 H300" fill="none" stroke="#35d07f" stroke-width="2" class="flowdot" stroke-dasharray="8 12"/>
+          </svg>
+          <!-- 设备：换热器（锅炉/换热机组位图） -->
+          <div class="dev run" style="left:50%;top:36%">
+            <span class="ring"><img src="../../assets/iotview-icons/34/24.png" width="86" height="86" alt="板式换热器"></span>
+            <div class="cap">板式换热器 E-01</div><div class="val ok num">一次 130→75 ℃</div>
+          </div>
+          <!-- 循环泵（立式泵组位图） -->
+          <div class="dev run" style="left:30%;top:79%">
+            <span class="ring"><img src="../../assets/iotview-icons/25/80.png" width="76" height="82" alt="循环泵"></span>
+            <div class="cap">循环泵 P-01</div><div class="val ok num">42.0 Hz · 运行</div>
+          </div>
+          <!-- 补水泵（卧式泵位图） -->
+          <div class="dev run" style="left:12%;top:89%">
+            <span class="ring"><img src="../../assets/iotview-icons/25/75.png" width="78" height="44" alt="补水泵"></span>
+            <div class="cap">补水泵 P-02</div><div class="val ok num">补水 2.3 m³/h</div>
+          </div>
+          <!-- 一次侧调节阀（手轮阀位图） -->
+          <div class="dev run" style="left:36%;top:20%">
+            <span class="ring"><img src="../../assets/iotview-icons/36/25.png" width="46" height="46" alt="调节阀"></span>
+            <div class="cap">调节阀 V-01</div><div class="val accent num">开度 68%</div>
+          </div>
+          <!-- 二次侧蝶阀 -->
+          <div class="dev run" style="left:70%;top:52%">
+            <span class="ring"><img src="../../assets/iotview-icons/36/28.png" width="34" height="46" alt="蝶阀"></span>
+            <div class="cap">蝶阀 V-02</div><div class="val ok num">全开</div>
+          </div>
+          <!-- 分水器（储罐位图） -->
+          <div class="dev run" style="left:73%;top:25%">
+            <span class="ring"><img src="../../assets/iotview-icons/24/106.png" width="86" height="46" alt="分水器"></span>
+            <div class="cap">分水器</div><div class="val accent num">60.2 ℃</div>
+          </div>
+          <!-- 补水罐（立式罐位图） -->
+          <div class="dev run" style="left:8%;top:55%">
+            <span class="ring"><img src="../../assets/iotview-icons/24/104.png" width="50" height="60" alt="补水罐"></span>
+            <div class="cap">补水罐 T-01</div><div class="val num">液位 72%</div>
+          </div>
+          <!-- 流量计（数显位图） -->
+          <div class="dev run" style="left:52%;top:52%">
+            <span class="ring"><img src="../../assets/iotview-icons/26/17.png" width="26" height="52" alt="流量计"></span>
+            <div class="cap">流量计 FT-01</div><div class="val accent num">128 m³/h</div>
+          </div>
+          <!-- 压力表（表盘位图） -->
+          <div class="dev run" style="left:60%;top:36%">
+            <span class="ring"><img src="../../assets/iotview-icons/3/16.png" width="46" height="46" alt="压力表"></span>
+            <div class="cap">压力表 PT-01</div><div class="val num">0.42 MPa</div>
+          </div>
+          <!-- 风机（罗茨风机位图，报警态用角标） -->
+          <div class="dev warns" style="left:86%;top:55%">
+            <span class="ring"><img src="../../assets/iotview-icons/38/26.png" width="62" height="60" alt="鼓风机"></span>
+            <div class="cap">鼓风机 F-01 <span class="warn">▲</span></div><div class="val warn num">振动偏高</div>
+          </div>
+          <!-- 管线标注 -->
+          <div class="tag" style="left:20%;top:14%;color:#ff9d5c">一次供水 130℃</div>
+          <div class="tag" style="left:22%;top:64%;color:#ff9d5c">一次回水 75℃</div>
+          <div class="tag" style="left:62%;top:47%;color:#36c2ff">二次供水 60℃</div>
+          <div class="tag" style="left:55%;top:92%;color:#36c2ff">二次回水 45℃</div>
+          <div class="tag" style="left:8%;top:96%;color:#35d07f">补水</div>
+        </div>
+      </article>
+    </section>
+    <section class="col">
+      <article class="panel"><div class="head"><b>二次侧 / 用户</b><span>实时</span></div><div class="body">
+        <div class="row"><span>二次供水温度</span><b class="accent num">{{p2.supply}} ℃</b></div>
+        <div class="row"><span>二次回水温度</span><b class="num">{{p2.return}} ℃</b></div>
+        <div class="row"><span>二次侧压力</span><b class="num">{{p2.pressure}} MPa</b></div>
+        <div class="row"><span>循环流量</span><b class="num">{{p2.flow}} m³/h</b></div>
+        <div class="row"><span>补水液位</span><b class="num">{{p2.level}} %</b></div>
+      </div></article>
+      <article class="panel"><div class="head"><b>报警与事件</b><span>按优先级</span></div><div class="body">
+        <div class="row"><span class="warn">▲ 鼓风机振动偏高</span><b class="warn num">14:22</b></div>
+        <div class="row"><span>一次回水温度正常</span><b class="ok num">13:58</b></div>
+        <div class="row"><span>补水泵自动补水</span><b class="num">13:40</b></div>
+        <div class="row"><span>数据链路正常</span><b class="ok num">PLC</b></div>
+      </div></article>
+    </section>
+  </main>
+  <footer class="footer">
+    <div>● 系统在线 · {{online}} 台设备运行</div>
+    <div>图元：iotview 位图库（fixed-color）· 状态由光环/角标表达 · 演示数据</div>
+    <div><span class="ok">数据质量 {{quality}}</span> · 更新时间 {{clock}}</div>
+  </footer>
+</div></div>
+<script>
+(function(){'use strict';
+  const $id=(id)=>document.getElementById(id);
+  const safeInit=(id)=>{try{const el=$id(id);if(!el)return null;return echarts.init(el);}catch(e){console.error(e);return null;}};
+  const tick=()=>{const d=new Date();return{t:d.toLocaleTimeString('zh-CN',{hour12:false}),dt:d.toLocaleDateString('zh-CN')}};
+  const app=Vue.createApp({
+    data(){
+      return{
+        clock:tick().t,date:tick().dt,quality:'GOOD',online:9,total:10,alarms:1,
+        kpi:{s2t:'60.2',pumpHz:'42.0',makeup:'2.3'},
+        p1:{supply:'130.4',return:'75.1',pressure:'0.42',heat:'12.6',valve:'68'},
+        p2:{supply:'60.2',return:'45.3',pressure:'0.38',flow:'128',level:'72'},
+        devStatus:[
+          {name:'循环泵 P-01',state:'运行',cls:'ok'},
+          {name:'补水泵 P-02',state:'运行',cls:'ok'},
+          {name:'调节阀 V-01',state:'开度 68%',cls:'accent'},
+          {name:'鼓风机 F-01',state:'振动偏高',cls:'warn'},
+          {name:'板式换热器 E-01',state:'运行',cls:'ok'}
+        ]
+      };
+    },
+    mounted(){const s=this;setInterval(()=>{try{const t=tick();s.clock=t.t;s.date=t.dt;}catch(e){}},1000);}
+  });
+  app.mount('#app');
+  function fit(){try{const el=$id('screen');if(!el)return;const k=Math.min(innerWidth/1920,innerHeight/1080);el.style.transform='translate(-50%,-50%) scale('+k+')';}catch(e){}}
+  fit();addEventListener('resize',()=>{try{fit();}catch(e){}});
+})();
+</script>
+</body>
+</html>
