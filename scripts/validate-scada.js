@@ -9,12 +9,21 @@ if (!inputs.length) {
   process.exit(2);
 }
 
+// 目录扫描时只校验显式声明 <meta name="screen-mode" content="scada"> 的页面。
+// out/ 混放多种模式产物（dashboard / hmi-classic / light-3d / local-panel），各有专用校验脚本；
+// 未标记的旧产物默认视为 dashboard，不属于 SCADA 契约。显式传入单个文件时始终按本契约校验。
+const SELF_MODE = /<meta\s+name=["']screen-mode["']\s+content=["']([^"']+)["']/i;
 const files = inputs.flatMap((input) => {
   const abs = path.resolve(input);
   if (!fs.existsSync(abs)) return [input];
   if (!fs.statSync(abs).isDirectory()) return [input];
   return fs.readdirSync(abs, { recursive: true })
     .filter((name) => name.toLowerCase().endsWith('.html'))
+    .filter((name) => {
+      const full = path.resolve(abs, name);
+      const m = fs.readFileSync(full, 'utf8').match(SELF_MODE);
+      return !!m && m[1].toLowerCase() === 'scada';
+    })
     .map((name) => path.join(abs, name));
 });
 

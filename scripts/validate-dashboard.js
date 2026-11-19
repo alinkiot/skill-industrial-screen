@@ -9,12 +9,26 @@ if (!inputs.length) {
   process.exit(2);
 }
 
+// 目录扫描时只校验「dashboard 模式」的交付页。out/ 可能混放参考画廊和其他模式
+// （scada / hmi-classic / light-3d / local-panel）的产物，它们各有专用校验脚本，
+// 不能套用驾驶舱契约。约定：非 dashboard 页在 <head> 声明 <meta name="screen-mode" content="...">。
+// 显式传入单个文件时始终按本契约校验（便于单独调试）。
+const SELF_MODE = /<meta\s+name=["']screen-mode["']\s+content=["']([^"']+)["']/i;
+const REFERENCE_DIRS = ['symbol-gallery'];
+
 const files = inputs.flatMap((input) => {
   const abs = path.resolve(input);
   if (!fs.existsSync(abs)) return [input];
   if (!fs.statSync(abs).isDirectory()) return [input];
   return fs.readdirSync(abs, { recursive: true })
     .filter((name) => name.toLowerCase().endsWith('.html'))
+    .filter((name) => {
+      const full = path.resolve(abs, name);
+      if (full.split(path.sep).some((p) => REFERENCE_DIRS.includes(p))) return false;
+      const m = fs.readFileSync(full, 'utf8').match(SELF_MODE);
+      // 无标记（历史产物）或显式标为 dashboard 的，才算本模式的校验对象
+      return !m || m[1].toLowerCase() === 'dashboard';
+    })
     .map((name) => path.join(abs, name));
 });
 

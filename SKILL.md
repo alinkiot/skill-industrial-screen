@@ -100,14 +100,22 @@ description: 创建工业监控大屏与 SCADA/HMI。核心是"控制 + 操作�
 
 ## 5. 验证
 
-完成后按所选模式运行校验脚本（脚本可接受文件或目录，对目录递归检查所有 `.html`）：
+完成后按所选模式运行校验脚本（支持目录递归，但按模式过滤——见下方约定）：
 
 ```bash
 node scripts/validate-dashboard.js out       # dashboard / local-panel
 node skills/industrial-screen/scripts/validate-hmi.js <html-file>            # hmi-classic
-node skills/industrial-screen/scripts/validate-scada.js <html-file>          # scada
+node skills/industrial-screen/scripts/validate-scada.js out                  # scada
 node skills/industrial-screen/scripts/validate-light-3d-hmi.js <html-file>   # light-3d
 ```
+
+**模式标记约定**：`out/` 会混放多种模式的产物，各校验脚本只用各自的契约校验对应模式。非 dashboard 模式的页面在 `<head>` 声明 `<meta name="screen-mode" content="scada|hmi-classic|light-3d|local-panel">`：
+
+- `validate-dashboard.js` 目录扫描时跳过带非 `dashboard` 标记的页面，以及参考页 `symbol-gallery/`
+- `validate-scada.js` 目录扫描时只校验显式标记 `scada` 的页面（未标记的旧产物默认按 dashboard 处理）
+- 显式传入单个 HTML 文件时，始终按该脚本的契约校验（便于单独调试）
+
+`hmi-classic` / `light-3d` 校验器只接受单个文件，需显式指定路径。参考图元画廊由 `gen-symbol-gallery.js` 生成，不属于任何交付模式。
 
 再分别以 1920×1080、1366×768、3840×2160 截图检查。验证内容应包括主状态、最高级报警、主视觉、图表、工况切换和控制台错误。
 

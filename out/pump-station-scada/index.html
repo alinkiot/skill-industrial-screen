@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>1# 加压泵站 · Web SCADA 操作终端</title>
+<meta name="screen-mode" content="scada">
+<!-- 演示数据 · 依赖本地 Vue 3，离线可打开。写操作为前端模拟，不接真实 PLC。 -->
+<script src="../../assets/vendor/vue.global.prod.js"></script>
+<style>
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1016;color:#dde2e8;font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif}
+body{display:flex;align-items:center;justify-content:center}.num{font-variant-numeric:tabular-nums}[v-cloak]{display:none}
+:root{--bg:#101820;--panel:#18222c;--line:#2b3a47;--accent:#36c2ff;--ok:#35d07f;--warn:#ffb547;--alarm:#ff5d5d;--t2:#9fb0bd;--t3:#6f8492}
+#screen{width:1920px;height:1080px;position:absolute;left:50%;top:50%;transform-origin:center center;display:grid;grid-template-rows:64px 52px 1fr 220px;overflow:hidden;background:var(--bg)}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:#0c131a;border-bottom:1px solid var(--line)}
+.topbar h1{margin:0;font-size:20px;letter-spacing:2px}.topbar .meta{color:var(--t3);font-size:12px}
+.alarmbar{display:flex;align-items:center;gap:16px;padding:0 22px;background:#2a1414;border-bottom:1px solid #5a2a2a;font-size:13px}
+.alarmbar.active{background:#3a1818;animation:blink 1.2s infinite}.alarmbar b{color:var(--alarm)}
+@keyframes blink{50%{opacity:.7}}
+.main{display:grid;grid-template-columns:300px 1fr 380px;gap:14px;padding:14px 18px;min-height:0}
+.panel{border:1px solid var(--line);border-radius:6px;background:var(--panel);overflow:hidden}
+.head{height:42px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);font-size:15px}.head span{font-size:11px;color:var(--t3)}
+.tree{padding:10px}.tree div{padding:9px 12px;margin-bottom:6px;border-radius:4px;color:var(--t2);font-size:14px}.tree div.on{background:rgba(54,194,255,.12);color:var(--accent)}
+.svgsvg{width:100%;height:100%}
+.pumps{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px}
+.pump{border:1px solid var(--line);border-radius:8px;padding:16px;background:#131d26;cursor:pointer;transition:border-color .15s}.pump:hover{border-color:var(--accent)}.pump.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.pump h3{margin:0 0 12px;font-size:16px}.pump .st{font-size:12px;color:var(--t2)}.pump .big{font-size:30px;margin:8px 0}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px}.b-run{background:rgba(53,208,127,.15);color:var(--ok)}.b-stop{background:rgba(255,93,93,.15);color:var(--alarm)}
+/* Faceplate 操作小面板 */
+.faceplate{padding:12px}.fp-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.btn{padding:7px 12px;border:1px solid var(--line);border-radius:4px;background:#1c2b36;color:#dde2e8;cursor:pointer;font-size:12px}.btn:hover{border-color:var(--accent)}.btn.danger{color:var(--alarm);border-color:#5a2a2a}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.audit{padding:6px 16px;overflow:hidden}.audit table{width:100%;border-collapse:collapse;font-size:12px}.audit td,.audit th{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left;color:var(--t2)}
+.mode{font-size:12px}.mode b{color:var(--ok)}
+</style>
+</head>
+<body>
+<div id="app" v-cloak><div id="scada-shell"><div id="screen">
+  <header class="topbar">
+    <h1>1# 加压泵站 · 监控操作终端</h1>
+    <div class="meta">控制权：<b class="mode">{{ controlMode }}</b> · 操作员 工号 A021 · 数据质量 GOOD · 更新时间 {{clock}}</div>
+  </header>
+  <div class="alarmbar" :class="{active: topAlarm.active}">
+    <b>■ {{ topAlarm.text }}</b><span>{{ topAlarm.note }}</span>
+    <button class="btn" @click="silenceAlarm">消音 (Silence)</button>
+    <button class="btn" @click="ackAlarm">确认告警 (ACK)</button>
+  </div>
+  <main class="main">
+    <section class="panel"><div class="head">工段导航 <span>权限 L2</span></div>
+      <div class="tree"><div :class="{on:nav===n}" v-for="n in navs" :key="n" @click="nav=n">{{n}}</div></div>
+    </section>
+    <section class="panel"><div class="head">工艺总览 <span>P&ID · 演示数据</span></div>
+      <div class="pumps">
+        <div class="pump" :class="{sel:selected===p.id}" v-for="p in pumps" :key="p.id" @click="selectPump(p)">
+          <h3>{{p.name}} <span class="badge" :class="p.run?'b-run':'b-stop'">{{p.run?'运行':'停止'}}</span></h3>
+          <div class="big num">{{p.hz}}<small style="font-size:13px"> Hz</small></div>
+          <div class="st">出口压力 {{p.pressure}} MPa · 电流 {{p.current}} A</div>
+          <div class="st">联锁：<span :style="{color:p.interlock?'#35d07f':'#ffb547'}">{{p.interlock?'投入':'退出'}}</span> · 手/自动 {{p.auto?'自动':'手动'}}</div>
+        </div>
+      </div>
+    </section>
+    <section class="panel"><div class="head">设备面板 Faceplate <span>{{selectedName}}</span></div>
+      <div class="faceplate">
+        <div class="fp-row"><span>设定频率 SP</span><b class="num">{{fp.sp.toFixed(1)}} Hz</b></div>
+        <div class="fp-row"><span>输出频率 OP</span><b class="num">{{fp.op.toFixed(1)}} Hz</b></div>
+        <div class="fp-row"><span>限幅范围</span><span>28.0 ~ 50.0 Hz（前端硬限幅）</span></div>
+        <div class="fp-row"><span> SP 微调 ±0.1</span><span>
+          <button class="btn" @click="adjust(-0.1)">-0.1</button>
+          <button class="btn" @click="adjust(0.1)">+0.1</button>
+        </span></div>
+        <div class="fp-row"><span>手/自动</span><button class="btn" @click="toggleAuto">{{fp.auto?'切手动':'切自动'}}</button></div>
+        <div class="fp-row"><span>启停控制（SBO 两步确认）</span><button class="btn" :class="pumpRun?'danger':''" @click="sboStartStop">{{pumpRun?'停止':'启动'}}</button></div>
+        <div class="fp-row"><span>故障复位</span><button class="btn" @click="resetFault">复位</button></div>
+        <div v-if="sbo.pending" style="margin-top:10px;padding:10px;border:1px solid #ffb547;border-radius:6px;background:rgba(255,181,71,.08);font-size:12px">
+          预选指令：<b>{{sbo.action}}</b> · 请在 5s 内二次确认 ——
+          <button class="btn" @click="sboConfirm">确认</button>
+          <button class="btn" @click="sboCancel">取消</button>
+        </div>
+      </div>
+    </section>
+  </main>
+  <section class="panel audit"><div class="head" style="margin:0 -16px 6px">操作审计日志 Audit Trail <span>时间 / 工号 / 对象 / 旧值 → 新值 / 结果</span></div>
+    <table><thead><tr><th>时间</th><th>工号</th><th>对象</th><th>指令</th><th>旧值 → 新值</th><th>结果</th></tr></thead>
+      <tbody><tr v-for="(r,i) in audit" :key="i"><td>{{r.t}}</td><td>{{r.user}}</td><td>{{r.obj}}</td><td>{{r.cmd}}</td><td>{{r.change}}</td><td :style="{color:r.ok?'#35d07f':'#ff5d5d'}">{{r.ok?'成功':'拒绝'}}</td></tr></tbody>
+    </table>
+  </section>
+</div></div></div>
+<script>
+(function(){'use strict';
+  const now=()=>new Date().toLocaleTimeString('zh-CN',{hour12:false});
+  const app=Vue.createApp({
+    data(){
+      return{
+        // 双向读写点表：writable=true 的点位可下发写指令，其余只读回读
+        tagPoints:[
+          {tag:'P1.HZ_SP',name:'1#泵频率设定',writable:true,unit:'Hz'},
+          {tag:'P1.START',name:'1#泵启动指令',writable:true,unit:''},
+          {tag:'P1.PRESS',name:'1#泵出口压力',writable:false,unit:'MPa'},
+          {tag:'P2.HZ_SP',name:'2#泵频率设定',writable:true,unit:'Hz'}
+        ],
+        clock:now(),controlMode:'中控',navs:['进水格栅','1# 加压泵','2# 加压泵','出水消毒'],nav:'1# 加压泵',
+        topAlarm:{active:true,text:'1# 加压泵 出口压力高高 (HH)',note:'14:22 触发 · 未确认'},
+        pumps:[
+          {id:'P1',name:'1# 加压泵',run:true,hz:42.0,pressure:0.62,current:38.5,interlock:true,auto:true},
+          {id:'P2',name:'2# 加压泵',run:false,hz:0,pressure:0.00,current:0,interlock:true,auto:true}
+        ],
+        selected:'P1',fp:{sp:42.0,op:42.0,auto:true},
+        sbo:{pending:false,action:'',timer:null},
+        audit:[
+          {t:'14:18:03',user:'A021',obj:'P1',cmd:'SP 调整',change:'40.0 → 42.0 Hz',ok:true},
+          {t:'14:10:55',user:'A021',obj:'P2',cmd:'启动 (SBO)',change:'停止 → 运行',ok:false}
+        ]
+      };
+    },
+    computed:{
+      selectedPump(){return this.pumps.find(p=>p.id===this.selected)||this.pumps[0];},
+      selectedName(){return this.selectedPump.name;},
+      pumpRun(){return this.selectedPump.run;}
+    },
+    mounted(){const s=this;setInterval(()=>{try{s.clock=now();}catch(e){}},1000);},
+    methods:{
+      selectPump(p){this.selected=p.id;this.fp.sp=p.hz;this.fp.op=p.hz;this.fp.auto=p.auto;},
+      adjust(d){let v=this.fp.sp+d;v=Math.max(28,Math.min(50,v));this.fp.sp=Math.round(v*10)/10;this.log('SP 调整',this.selected,this.fp.op.toFixed(1)+' → '+this.fp.sp.toFixed(1)+' Hz',true);},
+      toggleAuto(){this.fp.auto=!this.fp.auto;this.selectedPump.auto=this.fp.auto;this.log('手自动切换',this.selected,(this.fp.auto?'手动':'自动')+' → '+(this.fp.auto?'自动':'手动'),true);},
+      sboStartStop(){const action=this.pumpRun?'停止':'启动';this.sbo.pending=true;this.sbo.action=action;
+        clearTimeout(this.sbo.timer);this.sbo.timer=setTimeout(()=>{this.sbo.pending=false;this.log('SBO 超时回退',this.selected,action,false);},5000);},
+      sboConfirm(){if(!this.sbo.pending)return;const p=this.selectedPump;const action=this.sbo.action;const oldV=p.run?'运行':'停止';
+        p.run=!p.run;p.hz=p.run?42.0:0;p.pressure=p.run?0.62:0;this.fp.op=p.hz;this.fp.sp=p.hz;
+        clearTimeout(this.sbo.timer);this.sbo.pending=false;this.log('启停 (SBO)',p.id,oldV+' → '+(p.run?'运行':'停止'),true);},
+      sboCancel(){clearTimeout(this.sbo.timer);this.sbo.pending=false;this.log('SBO 取消',this.selected,'预选指令取消',true);},
+      resetFault(){this.log('故障复位',this.selected,'故障锁存 → 已复位',true);this.topAlarm.active=false;},
+      silenceAlarm(){this.log('消音',this.topAlarm.text,'蜂鸣 → 静音',true);},
+      ackAlarm(){this.topAlarm.active=false;this.log('告警确认',this.topAlarm.text,'未确认 → 已确认',true);},
+      log(cmd,obj,change,ok){this.audit.unshift({t:now(),user:'A021',obj:obj,cmd:cmd,change:change,ok:ok});if(this.audit.length>8)this.audit.pop();}
+    }
+  });
+  app.mount('#app');
+  function fit(){try{const el=document.getElementById('screen');if(!el)return;const s=Math.min(innerWidth/1920,innerHeight/1080);el.style.transform='translate(-50%,-50%) scale('+s+')';}catch(e){}}
+  fit();addEventListener('resize',()=>{try{fit();}catch(e){}});
+})();
+</script>
+</body>
+</html>

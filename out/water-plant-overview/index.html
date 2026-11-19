@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>城北污水处理厂 · 运行态势总览</title>
+<meta name="screen-mode" content="dashboard">
+<!-- 依赖相对路径 ../../assets/vendor/ 指向本 skill 自带本地库；离线可打开。演示数据。 -->
+<script src="../../assets/vendor/vue.global.prod.js"></script>
+<script src="../../assets/vendor/echarts.min.js"></script>
+<style>
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#03080c;color:#f2f7fa;font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif}
+body{display:flex;align-items:center;justify-content:center}.num{font-family:"Bahnschrift",Consolas,sans-serif;font-variant-numeric:tabular-nums}[v-cloak]{display:none}
+:root{--bg:#071019;--s1:#0b1622;--s2:#0f1d2a;--line:#20394a;--accent:#36c2ff;--success:#35d07f;--warning:#ffb547;--danger:#ff5d5d;--t1:#f2f7fa;--t2:#a8bac8;--t3:#708594}
+#screen{width:1920px;height:1080px;position:absolute;left:50%;top:50%;transform-origin:center center;display:grid;grid-template-rows:78px 1fr 42px;overflow:hidden;background:radial-gradient(circle at 50% 30%,rgba(54,194,255,.06),transparent 40%),var(--bg)}
+.topbar{display:grid;grid-template-columns:460px 1fr 460px;align-items:center;padding:0 24px;border-bottom:1px solid var(--line);background:#050d15}
+.brand strong{display:block;font-size:17px;letter-spacing:2px}.brand span{font-size:11px;color:var(--t3);letter-spacing:2px}
+.title{text-align:center}.title h1{margin:0;font-size:28px;letter-spacing:4px}.title p{margin:4px 0 0;color:var(--accent);font-size:11px;letter-spacing:5px}
+.clock{text-align:right}.clock strong{display:block;font-size:22px}.clock span{font-size:11px;color:var(--t3)}
+.main{min-height:0;display:grid;grid-template-columns:360px 1fr 360px;gap:14px;padding:14px 18px}
+.col{min-height:0;display:grid;grid-template-rows:1fr 1fr;gap:14px}.middle{grid-template-rows:116px 1fr 300px}
+.panel{min-height:0;overflow:hidden;border:1px solid var(--line);border-radius:8px;background:linear-gradient(145deg,rgba(15,29,42,.95),rgba(8,18,28,.96))}
+.head{height:46px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.head b{font-size:17px}.head span{font-size:11px;color:var(--t3)}
+.body{padding:14px}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--s2)}.kpi label{display:block;color:var(--t2);font-size:13px}.kpi strong{display:block;margin-top:7px;font-size:29px}.kpi span{font-size:11px;color:var(--t3)}
+.flow{position:relative;height:100%;padding:8px}.flow svg{width:100%;height:100%}
+.chart-body{height:calc(100% - 46px);padding:6px 8px 8px}.chart{width:100%;height:100%}
+.status{display:grid;gap:9px}.status div{display:flex;justify-content:space-between;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:#08131d;font-size:13px}.status span{color:var(--t2)}
+.alarm{padding:9px 12px;border-left:3px solid var(--line);background:#0a1622;margin-bottom:8px;border-radius:4px;font-size:13px}.alarm b{display:block;margin-bottom:3px}.alarm small{color:var(--t3)}
+.ok{color:var(--success)}.warn{color:var(--warning)}.danger{color:var(--danger)}.accent{color:var(--accent)}
+.footer{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center;padding:0 20px;border-top:1px solid var(--line);background:#050d15;font-size:12px;color:var(--t2)}
+.footer div:nth-child(2){text-align:center;color:var(--t3)}.footer div:last-child{text-align:right}
+</style>
+</head>
+<body>
+<div id="app" v-cloak><div id="screen">
+  <header class="topbar">
+    <div class="brand"><strong>城北污水处理厂</strong><span>WASTEWATER TREATMENT · 运行中心</span></div>
+    <div class="title"><h1>污水处理运行态势总览</h1><p>PROCESS · QUALITY · SAFETY</p></div>
+    <div class="clock num"><strong>{{clock}}</strong><span>{{date}} · 数据质量 {{quality}}</span></div>
+  </header>
+  <main class="main">
+    <section class="col">
+      <article class="panel"><div class="head"><b>进水水质</b><span>实时 · 2s 采样</span></div><div class="body status">
+        <div><span>COD</span><b class="accent num">{{inflow.cod}} mg/L</b></div>
+        <div><span>氨氮 NH₃-N</span><b class="accent num">{{inflow.nh3}} mg/L</b></div>
+        <div><span>总磷 TP</span><b class="num">{{inflow.tp}} mg/L</b></div>
+        <div><span>进水流量</span><b class="num">{{inflow.flow}} m³/h</b></div>
+        <div><span>pH</span><b class="ok num">{{inflow.ph}}</b></div>
+      </div></article>
+      <article class="panel"><div class="head"><b>关键设备状态</b><span>在线 {{online}}/{{total}}</span></div><div class="body status">
+        <div v-for="d in devices" :key="d.name"><span>{{d.name}}</span><b :class="d.ok?'ok':'danger'">{{d.status}}</b></div>
+      </div></article>
+    </section>
+    <section class="col middle">
+      <div class="kpis">
+        <div class="kpi"><label>日处理量</label><strong class="num accent">{{kpi.processed}}</strong><span>万吨 / 今日</span></div>
+        <div class="kpi"><label>达标率</label><strong class="num ok">{{kpi.compliance}}%</strong><span>出水 一级A</span></div>
+        <div class="kpi"><label>综合电耗</label><strong class="num">{{kpi.energy}}</strong><span>kWh/m³</span></div>
+        <div class="kpi"><label>当前报警</label><strong class="num warn">{{alarms.length}}</strong><span>1 条未确认</span></div>
+      </div>
+      <article class="panel"><div class="head"><b>工艺流程主视觉</b><span>进水 → 生化 → 深度 → 出水</span></div>
+        <div class="flow">
+          <svg viewBox="0 0 900 250" preserveAspectRatio="xMidYMid meet">
+            <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#36c2ff"/></marker></defs>
+            <g font-family="Microsoft YaHei,PingFang SC,sans-serif" font-size="13" text-anchor="middle">
+              <g v-for="(u,i) in units" :key="u.name">
+                <line :x1="30+i*180" y1="95" :x2="210+i*180" y2="95" stroke="#36c2ff" stroke-width="3" :marker-end="'url(#arrow)'" opacity="0.7"/>
+                <rect :x="60+i*180" y="55" width="120" height="80" rx="8" :fill="u.ok?'rgba(53,208,127,.10)':'rgba(255,181,71,.10)'" :stroke="u.ok?'#35d07f':'#ffb547'" stroke-width="1.5"/>
+                <text :x="120+i*180" y="88" fill="#f2f7fa" font-size="14">{{u.name}}</text>
+                <text :x="120+i*180" y="112" :fill="u.ok?'#35d07f':'#ffb547'" class="num">{{u.val}} {{u.unit}}</text>
+              </g>
+              <text x="450" y="185" fill="#708594" font-size="12">演示数据 · 测点贴合工艺节点，停机设备停止动画</text>
+            </g>
+          </svg>
+        </div>
+      </article>
+      <article class="panel"><div class="head"><b>出水水质趋势（24h）</b><span>COD / 氨氮</span></div><div class="chart-body"><div id="trendChart" class="chart"></div></div></article>
+    </section>
+    <section class="col">
+      <article class="panel"><div class="head"><b>报警与事件</b><span>按优先级</span></div><div class="body" style="padding:10px">
+        <div class="alarm" v-for="a in alarms" :key="a.time" :style="{borderLeftColor: a.level==='danger'?'#ff5d5d':(a.level==='warn'?'#ffb547':'#35d07f')}">
+          <b :class="a.level">{{a.text}}</b><small>{{a.time}} · {{a.note}}</small>
+        </div>
+      </div></article>
+      <article class="panel"><div class="head"><b>安全与决策</b><span>可执行</span></div><div class="body status">
+        <div><span>当前工况</span><b class="ok">自动运行</b></div>
+        <div><span>联锁状态</span><b class="ok">正常投入</b></div>
+        <div><span>数据链路</span><b class="ok">PLC / OPC UA</b></div>
+        <div><span>操作边界</span><b>大屏只读</b></div>
+      </div></article>
+    </section>
+  </main>
+  <footer class="footer">
+    <div>● 系统在线 · {{online}} 台设备运行</div>
+    <div>数据来源：PLC / OPC UA · 采样周期 2s · 演示数据</div>
+    <div><span class="ok">数据质量 {{quality}}</span> · 更新时间 {{clock}}</div>
+  </footer>
+</div></div>
+<script>
+(function(){'use strict';
+  const $id=(id)=>document.getElementById(id);
+  const safeInit=(id)=>{try{const el=$id(id);if(!el)return null;return echarts.init(el);}catch(e){console.error(e);return null;}};
+  const tick=()=>{const d=new Date();return{t:d.toLocaleTimeString('zh-CN',{hour12:false}),dt:d.toLocaleDateString('zh-CN')}};
+  const app=Vue.createApp({
+    data(){
+      return{
+        clock:tick().t,date:tick().dt,quality:'GOOD',
+        kpi:{processed:'8.62',compliance:'99.2',energy:'0.31'},
+        inflow:{cod:'186',nh3:'18.4',tp:'2.1',flow:'1,240',ph:'7.2'},
+        online:11,total:12,
+        devices:[
+          {name:'1# 提升泵',ok:true,status:'运行'},
+          {name:'2# 提升泵',ok:true,status:'运行'},
+          {name:'鼓风机组',ok:true,status:'运行'},
+          {name:'加药泵',ok:false,status:'检修'},
+          {name:'脱水机',ok:true,status:'待机'}
+        ],
+        units:[
+          {name:'格栅',val:'正常',unit:'',ok:true},
+          {name:'沉砂池',val:'2.1',unit:'m/h',ok:true},
+          {name:'生化池',val:'DO 2.4',unit:'',ok:true},
+          {name:'二沉池',val:'正常',unit:'',ok:true},
+          {name:'消毒出水',val:'达标',unit:'',ok:true}
+        ],
+        alarms:[
+          {time:'14:22',level:'danger',text:'加药泵 P-04 故障',note:'已联锁停机，等待现场复位'},
+          {time:'13:58',level:'warn',text:'生化池 DO 偏低',note:'2.4 mg/L，已增大曝气'},
+          {time:'12:30',level:'ok',text:'出水 COD 达标',note:'38.2 mg/L，裕量充足'}
+        ]
+      };
+    },
+    mounted(){
+      const self=this;
+      setInterval(()=>{try{const t=tick();self.clock=t.t;self.date=t.dt;}catch(e){}},1000);
+      this.$nextTick(()=>this.renderChart());
+    },
+    methods:{
+      renderChart(){
+        const chart=safeInit('trendChart');if(!chart)return;
+        const axis={axisLine:{lineStyle:{color:'#284355'}},axisTick:{show:false},axisLabel:{color:'#708594'},splitLine:{lineStyle:{color:'rgba(168,186,200,.08)'}}};
+        try{
+          chart.setOption({
+            grid:{left:48,right:48,top:30,bottom:32},
+            legend:{data:['COD','氨氮'],textStyle:{color:'#a8bac8'},top:0,right:0},
+            xAxis:{type:'category',data:['00','03','06','09','12','15','18','21','24'],...axis},
+            yAxis:[{type:'value',name:'mg/L',...axis},{type:'value',...axis}],
+            series:[
+              {name:'COD',type:'line',smooth:true,symbolSize:4,data:[32,28,30,36,40,38,42,37,35],lineStyle:{color:'#36c2ff',width:3},itemStyle:{color:'#36c2ff'},areaStyle:{color:'rgba(54,194,255,.10)'}},
+              {name:'氨氮',type:'line',smooth:true,yAxisIndex:1,symbolSize:4,data:[2.1,1.8,2.0,2.4,2.8,2.5,2.9,2.4,2.2],lineStyle:{color:'#35d07f',width:2},itemStyle:{color:'#35d07f'}}
+            ]
+          });
+        }catch(e){console.error(e);}
+        window.addEventListener('resize',()=>{try{chart.resize();}catch(e){}});
+      }
+    }
+  });
+  app.mount('#app');
+  function fit(){try{const el=$id('screen');if(!el)return;const scale=Math.min(innerWidth/1920,innerHeight/1080);el.style.transform='translate(-50%,-50%) scale('+scale+')';}catch(e){}}
+  fit();addEventListener('resize',()=>{try{fit();}catch(e){}});
+})();
+</script>
+</body>
+</html>

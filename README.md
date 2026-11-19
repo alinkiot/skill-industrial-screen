@@ -59,6 +59,32 @@ node scripts/build-raster-icons.js
 node scripts/gen-symbol-gallery.js
 ```
 
+### 模式标记与目录校验
+
+`out/` 会混放多种模式的产物，目录校验按模式过滤。非 dashboard 页面在 `<head>` 加一行标记：
+
+```html
+<meta name="screen-mode" content="scada">   <!-- 或 hmi-classic / light-3d / local-panel -->
+```
+
+`validate-dashboard.js out` 会跳过带其他模式标记的页面和参考页 `symbol-gallery/`；`validate-scada.js out` 只校验标记 `scada` 的页面。显式传单个文件时始终按该脚本契约校验。这样一条目录命令即可覆盖全部产物，不会误报。
+
+## 测试产物（实测记录）
+
+`out/` 中随仓库提供并经校验脚本实测通过的交付样例，可直接双击打开：
+
+| 目录 | 模式 | 校验 |
+| --- | --- | --- |
+| `water-plant-overview/` | dashboard · 污水厂运行态势（工艺流程主视觉 + 水质趋势） | `validate-dashboard.js` 通过 |
+| `pump-station-scada/` | scada · 加压泵站操作终端（Faceplate + SBO 两步确认 + 审计日志 + 消音确认） | `validate-scada.js` 通过 |
+
+`out/` 另有 5 个既有 dashboard 样例（换热站、热泵站、设备健康、污水厂写实、管网）与 1 个参考图元画廊，全部通过各自校验。目录级命令：
+
+```bash
+node scripts/validate-dashboard.js out   # 6 通过
+node scripts/validate-scada.js out       # 1 通过
+```
+
 ## 共享约定
 
 - 颜色只表达一种语义：青蓝为主数据，绿为正常，琥珀为警告，红为报警，灰为离线或未知。
